@@ -203,7 +203,11 @@ Cada tarjeta tiene un ícono **ⓘ**: si pasás el mouse por encima, explica exa
 | **Certificados vencidos e impagos** | Certificados cuyo vencimiento de pago ya pasó y siguen con saldo. |
 | **Reajustes pendientes** | Reajustes calculados o presentados que el cliente todavía no aprobó. |
 
-### 6.3. Alertas
+### 6.3. Avisos de cobro para enviar
+
+Si algún certificado o caución vence en una semana, mañana u hoy, arriba de las alertas aparece la tarjeta **Avisos de cobro para enviar**, con botones para escribirle al cliente por **WhatsApp** o por **correo**. Ver sección 20.3.
+
+### 6.4. Alertas
 
 Lista ordenada por prioridad (alta, media, baja), con un enlace directo a cada caso:
 
@@ -216,7 +220,7 @@ Lista ordenada por prioridad (alta, media, baja), con un enlace directo a cada c
 - Reajuste CAC **pendiente de aprobación**.
 - Obra que **se acerca a su fin estimado sin fecha real** de finalización.
 
-### 6.4. Gráficos
+### 6.5. Gráficos
 
 - **Evolución mensual**: certificado, cobrado y retenido por mes.
 - **Retenciones acumuladas**: cómo crece la caución retenida en el tiempo.
@@ -261,6 +265,8 @@ Es el padrón de empresas que contratan a Conkreto. Todo cuelga de un cliente: o
    - **CUIT** (formato sugerido `30-12345678-9`). El sistema no permite cargar dos clientes con el mismo CUIT; revisá bien los dígitos, porque no controla el dígito verificador.
    - **Estado**: *Activo* o *Inactivo*.
    - **Contacto**, **correo**, **teléfono**, **dirección**, **observaciones**.
+   - El **teléfono** y el **correo** se usan para los **avisos de cobro** (ver sección 20.3). Cargá el teléfono con código de país y de área, sin el 0 ni el 15: por ejemplo `5491123456789` para un celular de Buenos Aires. Si lo cargás como `011 2345-6789`, el sistema igual intenta convertirlo, pero es más seguro el formato completo.
+   - En **Contacto** poné el nombre de la persona a quien le escriben: el mensaje empieza con "Hola {contacto}".
 3. **Guardar**.
 
 ### 8.3. La ficha del cliente
@@ -799,13 +805,14 @@ Los archivos **solo se pueden descargar con una sesión iniciada**: no hay enlac
 
 Avisos automáticos sobre vencimientos de cauciones, certificados y reclamos. Se generan según las **reglas de recordatorios**:
 
-- 30 días antes del vencimiento.
-- 15 días antes.
-- 7 días antes.
-- El día del vencimiento.
+- 30 días antes del vencimiento (aviso interno).
+- 15 días antes (aviso interno).
+- **Avisar al cliente: falta una semana** (7 días antes).
+- **Avisar al cliente: vence mañana** (1 día antes).
+- **Avisar al cliente: vence hoy** (el mismo día).
 - Cada 7 días después del vencimiento, mientras siga impago.
 
-El administrador puede activar, desactivar o cambiar los días de cada regla. **Un mismo aviso no se duplica**: si ya existe para ese caso y esa regla, no se vuelve a crear.
+El administrador puede activar, desactivar o cambiar los días de cada regla. **Un mismo aviso no se duplica**: si ya existe para ese caso y esa regla, no se vuelve a crear. Si un certificado se carga cuando ya falta poco, se genera solo el aviso que corresponde a ese momento (por ejemplo, si vence mañana, no aparece también el de "falta una semana").
 
 ### 20.2. Cómo usarlos
 
@@ -815,6 +822,35 @@ El administrador puede activar, desactivar o cambiar los días de cada regla. **
 4. **Marcar gestionado**: cuando ya te ocupaste, desaparece de la lista.
 
 Estados: **Pendiente** → **Visto** → **Gestionado**.
+
+### 20.3. Avisos de cobro al cliente (WhatsApp o correo)
+
+Sirven para **escribirle al cliente antes de que venza un pago** y recordarle que tiene que pagar. Se generan para:
+
+- **Certificados** con fecha de vencimiento de pago y saldo pendiente.
+- **Cauciones** con fecha estimada de liberación y saldo por recuperar.
+
+Se crean **una semana antes**, **un día antes** y **el mismo día** del vencimiento.
+
+**Dónde aparecen**
+
+- En **Inicio**, en la tarjeta **Avisos de cobro para enviar**.
+- En la **campana**, con los botones de envío.
+
+**Cómo enviar un aviso**
+
+1. Tocá **WhatsApp**: se abre WhatsApp (web o la aplicación) con el número del cliente y el mensaje ya escrito. Revisalo y tocá enviar.
+2. O tocá **Correo**: se abre tu programa de correo con el destinatario, el asunto y el mensaje ya cargados.
+3. Con **Ver mensaje** podés leer el texto antes, **copiarlo** y pegarlo donde quieras (por ejemplo, si lo mandás desde otro teléfono).
+
+El mensaje incluye el nombre del contacto, el número de certificado, la obra, la orden de compra, la fecha de vencimiento y el **saldo pendiente actualizado**.
+
+Al tocar WhatsApp o Correo, el aviso queda como **gestionado**, desaparece de la lista y se registra en la **auditoría** quién lo envió y por qué canal. Si el cliente paga antes, los avisos pendientes de ese certificado desaparecen solos.
+
+**Importante**
+
+- El envío lo hacés vos desde tu WhatsApp o tu correo: el sistema arma el mensaje, pero no lo manda solo.
+- Si el botón de WhatsApp o de correo no aparece, al cliente le falta el teléfono o el correo. Completalo en su ficha (sección 8.2).
 
 ---
 
