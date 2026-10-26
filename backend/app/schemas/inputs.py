@@ -29,7 +29,7 @@ def _choice(value: str | None, allowed: set[str], label: str) -> str | None:
 
 
 class LoginIn(BaseModel):
-    username: str
+    email: str
     password: str
 
 

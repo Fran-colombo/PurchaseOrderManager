@@ -1,3 +1,4 @@
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -61,7 +62,8 @@ def seed_reference_data(db: Session) -> None:
 def ensure_initial_admin(db: Session) -> None:
     settings = get_settings()
     username = settings.initial_admin_username.strip()
-    existing = db.query(User).filter(User.username == username).one_or_none()
+    email = settings.initial_admin_email.strip().lower()
+    existing = db.query(User).filter(or_(User.username == username, func.lower(User.email) == email)).first()
     if existing:
         return
     if not settings.initial_admin_password:
@@ -69,7 +71,7 @@ def ensure_initial_admin(db: Session) -> None:
     db.add(
         User(
             username=username,
-            email=settings.initial_admin_email.strip(),
+            email=email,
             full_name="Administrador inicial",
             hashed_password=hash_password(settings.initial_admin_password),
             role=UserRole.SYSADMIN.value,

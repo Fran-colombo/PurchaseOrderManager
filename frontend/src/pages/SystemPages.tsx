@@ -430,7 +430,7 @@ function UserModal({ initial, onClose, onSaved }: { initial?: User; onClose: () 
       <div className="row g-3">
         <Field name="username" label="Usuario" required className="col-12" value={form.username} onChange={(value) => setForm({ ...form, username: value })} error={errors.username} disabled={Boolean(initial)} />
         <Field name="full_name" label="Nombre y apellido" className="col-12" value={form.full_name} onChange={(value) => setForm({ ...form, full_name: value })} />
-        <Field name="email" label="Correo" required type="email" className="col-12" value={form.email} onChange={(value) => setForm({ ...form, email: value })} error={errors.email} />
+        <Field name="email" label="Correo" required type="email" className="col-12" value={form.email} onChange={(value) => setForm({ ...form, email: value })} error={errors.email} hint="Es el dato con el que el usuario inicia sesión." />
         <SelectField name="role" label="Rol" className="col-12" value={form.role} onChange={(value) => setForm({ ...form, role: value as User["role"] })} options={[{ value: "normal", label: "Usuario normal" }, { value: "sysadmin", label: "Administrador del sistema" }]} />
         <Field name="password" label={initial ? "Nueva contraseña (opcional)" : "Contraseña inicial"} required={!initial} type="password" className="col-12" value={form.password} onChange={(value) => setForm({ ...form, password: value })} error={errors.password} hint={initial ? "Si la cambiás, se cierran las sesiones abiertas del usuario." : "Comunicásela al usuario por un canal seguro."} />
         <CheckField name="is_active" label="Usuario activo" checked={form.is_active} onChange={(value) => setForm({ ...form, is_active: value })} />

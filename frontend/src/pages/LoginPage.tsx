@@ -7,7 +7,7 @@ export default function LoginPage() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,13 +17,13 @@ export default function LoginPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    if (!username.trim() || !password) {
-      setError("Ingresá tu usuario y contraseña.");
+    if (!email.trim() || !password) {
+      setError("Ingresá tu correo y contraseña.");
       return;
     }
     setBusy(true);
     try {
-      await login(username.trim(), password);
+      await login(email.trim(), password);
       const target = (location.state as { from?: string } | null)?.from ?? "/";
       navigate(target, { replace: true });
     } catch (caught) {
@@ -52,10 +52,10 @@ export default function LoginPage() {
           </div>
         )}
         <div className="mb-3">
-          <label className="form-label" htmlFor="username">
-            Usuario
+          <label className="form-label" htmlFor="email">
+            Correo electrónico
           </label>
-          <input id="username" className="form-control form-control-lg" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} autoFocus />
+          <input id="email" type="email" inputMode="email" className="form-control form-control-lg" autoComplete="username" placeholder="nombre@conkreto.com" value={email} onChange={(event) => setEmail(event.target.value)} autoFocus />
         </div>
         <div className="mb-4">
           <label className="form-label" htmlFor="password">

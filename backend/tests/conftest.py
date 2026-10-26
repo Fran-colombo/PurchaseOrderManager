@@ -34,8 +34,8 @@ def client():
     Base.metadata.drop_all(engine)
 
 
-def auth_headers(client, username="admin", password="Admin-inicial-123"):
-    response = client.post("/api/auth/login", json={"username": username, "password": password})
+def auth_headers(client, email="admin@test.local", password="Admin-inicial-123"):
+    response = client.post("/api/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

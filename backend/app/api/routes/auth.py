@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -16,12 +17,12 @@ from app.services.presenters import user_out
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _too_many_attempts(db: Session, username: str) -> bool:
+def _too_many_attempts(db: Session, identifier: str) -> bool:
     settings = get_settings()
     window = datetime.now(timezone.utc) - timedelta(minutes=settings.login_window_minutes)
     failures = (
         db.query(LoginAttempt)
-        .filter(LoginAttempt.username == username, LoginAttempt.success.is_(False), LoginAttempt.created_at >= window)
+        .filter(LoginAttempt.username == identifier, LoginAttempt.success.is_(False), LoginAttempt.created_at >= window)
         .count()
     )
     return failures >= settings.login_max_attempts
@@ -29,16 +30,16 @@ def _too_many_attempts(db: Session, username: str) -> bool:
 
 @router.post("/login")
 def login(data: LoginIn, request: Request, db: Session = Depends(get_db)):
-    username = data.username.strip()
+    email = data.email.strip().lower()
     ip = request.client.host if request.client else ""
-    if _too_many_attempts(db, username):
+    if _too_many_attempts(db, email):
         raise AppError("Demasiados intentos fallidos. Esperá unos minutos e intentá de nuevo.", 429, "rate_limited")
-    user = db.query(User).filter(User.username == username).one_or_none()
+    user = db.query(User).filter(func.lower(User.email) == email).one_or_none() if email else None
     if user is None or not user.is_active or not verify_password(data.password, user.hashed_password):
-        db.add(LoginAttempt(username=username, success=False, ip_address=ip))
+        db.add(LoginAttempt(username=email, success=False, ip_address=ip))
         db.commit()
-        raise AppError("Usuario o contraseña incorrectos.", 401, "invalid_credentials")
-    db.add(LoginAttempt(username=username, success=True, ip_address=ip))
+        raise AppError("Correo o contraseña incorrectos.", 401, "invalid_credentials")
+    db.add(LoginAttempt(username=email, success=True, ip_address=ip))
     settings = get_settings()
     raw_refresh = new_refresh_token()
     db.add(

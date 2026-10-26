@@ -6,7 +6,7 @@ interface AuthState {
   user: User | null;
   meta: Meta | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
   isAdmin: boolean;
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("conkreto:logout", onLogout);
   }, [reload]);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const { data } = await api.post("/auth/login", { username, password });
+  const login = useCallback(async (email: string, password: string) => {
+    const { data } = await api.post("/auth/login", { email, password });
     tokens.set(data.access_token, data.refresh_token);
     setUser(data.user);
     const metaResponse = await api.get<Meta>("/meta");

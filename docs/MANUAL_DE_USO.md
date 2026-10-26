@@ -85,14 +85,14 @@ Todo queda registrado con fecha, usuario y motivo, para poder reconstruir la his
 ### 3.1. Entrar al sistema
 
 1. Abrí la dirección que te pasó el administrador (en el entorno local: `http://localhost:5173`). Funciona en computadora, tablet y celular, con cualquier navegador actualizado.
-2. Escribí tu **usuario** y tu **contraseña**.
+2. Escribí tu **correo electrónico** y tu **contraseña**. No importa si usás mayúsculas o minúsculas en el correo.
 3. Tocá **Ingresar**.
 
 No existe una pantalla para registrarse. **Las cuentas las crea un administrador** desde *Administración → Usuarios*. Si no tenés usuario, pedíselo.
 
 ### 3.2. Si te equivocás de contraseña
 
-Después de varios intentos fallidos seguidos, el sistema bloquea temporalmente el ingreso para ese usuario (por defecto, 5 intentos en 15 minutos). Esperá unos minutos y volvé a intentar, o pedile al administrador que te asigne una contraseña nueva.
+Después de varios intentos fallidos seguidos, el sistema bloquea temporalmente el ingreso para ese correo (por defecto, 5 intentos en 15 minutos). Esperá unos minutos y volvé a intentar, o pedile al administrador que te asigne una contraseña nueva.
 
 ### 3.3. Cambiá tu contraseña la primera vez
 
@@ -868,7 +868,7 @@ En la barra superior (o dentro del menú en el celular):
 
 Arriba a la derecha → tu nombre → **Perfil y contraseña**:
 
-- **Datos personales**: nombre y apellido, y correo. **Guardar**.
+- **Datos personales**: nombre y apellido, y correo. **Guardar**. Si cambiás el correo, a partir de ese momento iniciás sesión con el nuevo.
 - **Cambiar contraseña**: actual, nueva (mínimo 8 caracteres) y repetir. Al cambiarla se cierran tus otras sesiones.
 
 No podés cambiar tu propio rol desde acá.
@@ -881,7 +881,7 @@ No podés cambiar tu propio rol desde acá.
 
 Menú **Administración → Usuarios**.
 
-- **Nuevo usuario**: usuario (mínimo 3 caracteres, no se puede cambiar después), nombre, correo, **rol** (*Usuario normal* o *Administrador del sistema*), **contraseña inicial** (mínimo 8 caracteres) y si está **activo**. Pasale la contraseña al usuario por un canal seguro y pedile que la cambie.
+- **Nuevo usuario**: usuario (mínimo 3 caracteres, es un identificador interno y no se puede cambiar después), nombre, **correo** (es con lo que la persona inicia sesión, y no puede repetirse), **rol** (*Usuario normal* o *Administrador del sistema*), **contraseña inicial** (mínimo 8 caracteres) y si está **activo**. Pasale la contraseña al usuario por un canal seguro y pedile que la cambie.
 - **Editar** (lápiz): correo, nombre, rol, activo y, opcionalmente, una **nueva contraseña**. Si cambiás la contraseña o lo desactivás, **se cierran todas sus sesiones** al instante.
 - **Desactivar** en vez de borrar: un usuario inactivo no puede entrar, pero su historia se conserva.
 - **Eliminar** (papelera): solo si el usuario **no tiene acciones en la auditoría**; si las tiene, el sistema pide desactivarlo.

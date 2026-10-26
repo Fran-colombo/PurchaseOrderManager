@@ -3,20 +3,21 @@ from io import StringIO
 import csv
 
 
-def auth_headers(client, username="admin", password="Admin-inicial-123"):
-    response = client.post("/api/auth/login", json={"username": username, "password": password})
+def auth_headers(client, email="admin@test.local", password="Admin-inicial-123"):
+    response = client.post("/api/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
-def login(client, username="admin", password="Admin-inicial-123"):
-    return client.post("/api/auth/login", json={"username": username, "password": password})
+def login(client, email="admin@test.local", password="Admin-inicial-123"):
+    return client.post("/api/auth/login", json={"email": email, "password": password})
 
 
 def test_login_success_and_failure(client):
     bad = login(client, password="no-es-la-clave")
     assert bad.status_code == 401
-    ok = login(client)
+    assert login(client, email="admin", password="Admin-inicial-123").status_code == 401
+    ok = login(client, email="  Admin@Test.Local ")
     body = ok.json()
     assert "access_token" in body
     assert "hashed_password" not in body["user"]
@@ -30,8 +31,8 @@ def test_no_public_registration(client):
 
 def test_rate_limit(client):
     for _ in range(5):
-        assert login(client, username="fantasma", password="mala").status_code == 401
-    blocked = login(client, username="fantasma", password="mala")
+        assert login(client, email="fantasma@test.local", password="mala").status_code == 401
+    blocked = login(client, email="fantasma@test.local", password="mala")
     assert blocked.status_code == 429
 
 
@@ -49,7 +50,7 @@ def test_normal_user_cannot_administer(client):
         },
     )
     assert created.status_code == 200, created.text
-    normal = auth_headers(client, "operador", "Operador-123")
+    normal = auth_headers(client, "operador@test.local", "Operador-123")
     assert client.get("/api/users", headers=normal).status_code == 403
     assert client.post("/api/users", headers=normal, json={"username": "x", "email": "x@test.local", "password": "clave-12345", "role": "sysadmin"}).status_code == 403
     assert client.get("/api/audit", headers=normal).status_code == 403
