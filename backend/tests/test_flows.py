@@ -361,6 +361,60 @@ def test_client_payment_notices_week_day_and_same_day(client):
     assert any(row["action"] == "aviso_cliente" for row in audit["items"])
 
 
+def test_client_notices_are_emailed_automatically(client, monkeypatch):
+    from datetime import datetime
+
+    from app.core.config import get_settings
+    from app.core.database import SessionLocal
+    from app.services import notifier
+    from app.services.mailer import MailError
+
+    headers = auth_headers(client)
+    customer, _, order, item = _base_contract(client, headers)
+    client.put(f"/api/clients/{customer['id']}", headers=headers, json={"contact_name": "Laura", "email": "pagos@pecam.test"})
+    cert = _certificate(client, headers, order["id"], item["id"], "C-1", "10", status="facturado")
+    client.put(f"/api/certificates/{cert['id']}", headers=headers, json={"payment_due_date": (date.today() + timedelta(days=1)).isoformat()})
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "smtp_host", "smtp.test")
+    monkeypatch.setattr(settings, "smtp_from", "avisos@conkreto.test")
+    sent = []
+    outcomes = [MailError("servidor caído"), None]
+
+    def fake_send(to, subject, body):
+        outcome = outcomes.pop(0)
+        if outcome:
+            raise outcome
+        sent.append((to, subject, body))
+
+    monkeypatch.setattr(notifier, "send_email", fake_send)
+    today = date.today()
+    night = datetime(today.year, today.month, today.day, 22, 0)
+    morning = datetime(today.year, today.month, today.day, 10, 0)
+
+    db = SessionLocal()
+    try:
+        assert notifier.run_auto_notices(db, now=night) == {"sent": 0, "failed": 0, "skipped": 0}
+        assert notifier.run_auto_notices(db, now=morning)["failed"] == 1
+        assert len(client.get("/api/reminders/client-notices", headers=headers).json()) == 1
+        assert notifier.run_auto_notices(db, now=morning)["sent"] == 1
+        assert notifier.run_auto_notices(db, now=morning)["sent"] == 0
+    finally:
+        db.close()
+
+    assert len(sent) == 1
+    to, subject, body = sent[0]
+    assert to == "pagos@pecam.test"
+    assert "C-1" in subject
+    assert "Hola Laura" in body and "vence mañana" in body
+    assert client.get("/api/reminders/client-notices", headers=headers).json() == []
+    status = client.get("/api/settings/email", headers=headers).json()
+    assert status["enabled"] is True
+    assert [row["status"] for row in status["recent"]] == ["enviado", "error"]
+    audit = client.get("/api/audit", headers=headers, params={"entity_type": "certificate"}).json()
+    assert any(row["action"] == "aviso_cliente" and row["user_id"] is None for row in audit["items"])
+
+
 def test_future_completion_is_not_claimable_yet(client):
     headers = auth_headers(client)
     _, project, order, item = _base_contract(client, headers)

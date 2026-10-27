@@ -510,6 +510,86 @@ interface Rule {
   description: string;
 }
 
+interface EmailStatus {
+  enabled: boolean;
+  auto_send: boolean;
+  host: string;
+  port: number;
+  from_address: string;
+  from_name: string;
+  bcc: string;
+  send_hour: number;
+  send_until_hour: number;
+  check_minutes: number;
+  recent: { id: number; created_at: string | null; to_address: string; subject: string; status: string; automatic: boolean; error: string }[];
+}
+
+function EmailSettingsCard() {
+  const notify = useToast();
+  const status = useApi<EmailStatus>("/settings/email");
+  const [testing, setTesting] = useState(false);
+
+  const test = async () => {
+    setTesting(true);
+    try {
+      const { data } = await api.post("/settings/email/test");
+      notify(data.detail);
+    } catch (caught) {
+      notify(errorMessage(caught), "danger");
+    } finally {
+      setTesting(false);
+      status.reload();
+    }
+  };
+
+  const data = status.data;
+  return (
+    <Card title={<><i className="bi bi-envelope-paper me-2" />Correo automático a clientes</>}>
+      {status.error ? (
+        <ErrorBox message={status.error} onRetry={status.reload} />
+      ) : !data ? (
+        <Loading />
+      ) : !data.enabled ? (
+        <div className="small">
+          <p className="mb-2"><span className="badge text-bg-secondary me-1">Desactivado</span>No hay servidor de correo configurado, así que los avisos se mandan a mano con los botones de WhatsApp y Correo.</p>
+          <p className="text-secondary mb-0">Para activarlo hay que completar <code>SMTP_HOST</code>, <code>SMTP_FROM</code>, <code>SMTP_USERNAME</code> y <code>SMTP_PASSWORD</code> en el archivo <code>.env</code> del servidor y reiniciar la aplicación.</p>
+        </div>
+      ) : (
+        <>
+          <dl className="kv-grid mb-3">
+            <div className="kv-item"><dt>Estado</dt><dd>{data.auto_send ? <span className="badge text-bg-success">Envío automático activo</span> : <span className="badge text-bg-warning">Solo envío manual</span>}</dd></div>
+            <div className="kv-item"><dt>Remitente</dt><dd>{data.from_name} &lt;{data.from_address}&gt;</dd></div>
+            <div className="kv-item"><dt>Servidor</dt><dd>{data.host}:{data.port}</dd></div>
+            <div className="kv-item"><dt>Horario de envío</dt><dd>De {data.send_hour} a {data.send_until_hour} h, revisa cada {data.check_minutes} min</dd></div>
+            {data.bcc && <div className="kv-item"><dt>Copia oculta</dt><dd>{data.bcc}</dd></div>}
+          </dl>
+          <button className="btn btn-outline-primary btn-sm" disabled={testing} onClick={test}>
+            {testing ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="bi bi-send me-1" />}
+            Enviarme un correo de prueba
+          </button>
+          <h3 className="fs-6 fw-semibold mt-4 mb-2">Últimos envíos</h3>
+          {data.recent.length === 0 ? (
+            <p className="small text-secondary mb-0">Todavía no se envió ningún correo.</p>
+          ) : (
+            <ul className="list-unstyled small mb-0 vstack gap-2">
+              {data.recent.map((row) => (
+                <li key={row.id} className="border-top pt-2">
+                  <div className="d-flex justify-content-between gap-2">
+                    <span className="text-truncate">{row.to_address}</span>
+                    <span className={`badge ${row.status === "enviado" ? "text-bg-success" : "text-bg-danger"}`}>{row.status === "enviado" ? "Enviado" : "Error"}</span>
+                  </div>
+                  <div className="text-secondary">{dateTime(row.created_at)} · {row.automatic ? "automático" : "manual"} · {row.subject}</div>
+                  {row.error && <div className="text-danger">{row.error}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
 export function SystemSettingsPage() {
   const notify = useToast();
   const settings = useApi<Setting[]>("/settings");
@@ -568,6 +648,9 @@ export function SystemSettingsPage() {
             )}
             <p className="small text-secondary mt-3 mb-0">Cambiar estos valores no modifica órdenes ni certificados existentes.</p>
           </Card>
+          <div className="mt-3">
+            <EmailSettingsCard />
+          </div>
         </div>
         <div className="col-12 col-xl-6">
           <Card title="Reglas de recordatorios">

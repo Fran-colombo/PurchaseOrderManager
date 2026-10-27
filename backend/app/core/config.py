@@ -22,6 +22,20 @@ class Settings(BaseSettings):
     login_max_attempts: int = 5
     login_window_minutes: int = 15
 
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_security: str = "starttls"
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_from_name: str = "Conkreto"
+    smtp_reply_to: str = ""
+    smtp_bcc: str = ""
+    notices_auto_send: bool = True
+    notices_send_hour: int = 9
+    notices_send_until_hour: int = 20
+    notices_check_minutes: int = 30
+
     @model_validator(mode="after")
     def check_secrets(self) -> "Settings":
         if self.is_production:
@@ -41,6 +55,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host.strip() and self.smtp_from.strip())
 
 
 @lru_cache

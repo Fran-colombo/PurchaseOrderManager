@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import { useAuth } from "../app/auth";
 import { ClientNoticeRow } from "../components/ClientNotice";
 import { Card, EmptyState, ErrorBox, Loading, Money, PageHeader, StatCard } from "../components/ui";
 import { useApi } from "../hooks/useApi";
@@ -33,6 +34,7 @@ function mergeSeries(...series: { key: string; rows: { month: string; amount: st
 export default function DashboardPage() {
   const { data, loading, error, reload } = useApi<Dashboard>("/dashboard/summary");
   const notices = useApi<Reminder[]>("/reminders/client-notices");
+  const { meta } = useAuth();
   const [currency, setCurrency] = useState("ARS");
 
   useEffect(() => {
@@ -106,7 +108,10 @@ export default function DashboardPage() {
           bodyClass="p-0"
         >
           <p className="small text-secondary px-3 pt-3 mb-0">
-            Certificados y cauciones que vencen en una semana, mañana u hoy. Enviá el recordatorio al cliente por WhatsApp o correo: el mensaje ya viene escrito y el envío queda registrado.
+            Certificados y cauciones que vencen en una semana, mañana u hoy.{" "}
+            {meta?.email_auto_send
+              ? "Los clientes con correo cargado reciben el aviso automáticamente; acá quedan los que no tienen correo o los que todavía no salieron. También podés mandarlos ahora por WhatsApp o correo."
+              : "Enviá el recordatorio al cliente por WhatsApp o correo: el mensaje ya viene escrito y el envío queda registrado."}
           </p>
           {notices.data.map((reminder) => (
             <ClientNoticeRow key={reminder.id} reminder={reminder} onDone={notices.reload} />

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../app/auth";
 import { useToast } from "../app/toast";
 import { api, errorMessage } from "../services/api";
 import type { Reminder } from "../types";
@@ -10,11 +11,27 @@ type Channel = "whatsapp" | "email";
 
 export function ClientNoticeButtons({ reminder, onDone, compact = false }: { reminder: Reminder; onDone: () => void; compact?: boolean }) {
   const notify = useToast();
+  const { meta } = useAuth();
   const [preview, setPreview] = useState(false);
+  const [sending, setSending] = useState(false);
   const contact = reminder.contact;
   if (!contact) return null;
+  const serverEmail = Boolean(meta?.email_enabled && contact.email);
 
   const send = async (channel: Channel) => {
+    if (channel === "email" && serverEmail) {
+      setSending(true);
+      try {
+        await api.post(`/reminders/${reminder.id}/send-email`);
+        notify(`Correo enviado a ${contact.email}. El aviso quedó registrado.`);
+        onDone();
+      } catch (caught) {
+        notify(errorMessage(caught), "danger");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     window.open(channel === "whatsapp" ? contact.whatsapp_url : contact.mailto_url, "_blank", "noopener");
     try {
       await api.post(`/reminders/${reminder.id}/contacted`, { channel });
@@ -31,8 +48,9 @@ export function ClientNoticeButtons({ reminder, onDone, compact = false }: { rem
         <button type="button" className="btn btn-sm btn-success" onClick={() => send("whatsapp")} title={contact.phone ? `Enviar a ${contact.phone}` : "Sin teléfono: elegís el contacto en WhatsApp"}>
           <i className="bi bi-whatsapp me-1" />WhatsApp
         </button>
-        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => send("email")} title={contact.email ? `Enviar a ${contact.email}` : "Sin correo cargado"}>
-          <i className="bi bi-envelope me-1" />Correo
+        <button type="button" className="btn btn-sm btn-outline-primary" disabled={sending} onClick={() => send("email")} title={contact.email ? (serverEmail ? `Enviar ahora desde el sistema a ${contact.email}` : `Enviar a ${contact.email}`) : "Sin correo cargado"}>
+          {sending ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="bi bi-envelope me-1" />}
+          {serverEmail ? "Enviar correo" : "Correo"}
         </button>
         <button type="button" className="btn btn-sm btn-link px-1" onClick={() => setPreview(true)}>
           Ver mensaje

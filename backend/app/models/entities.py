@@ -465,6 +465,18 @@ class Reminder(Base, IdMixin):
     managed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class EmailLog(Base, IdMixin):
+    __tablename__ = "email_logs"
+
+    reminder_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    to_address: Mapped[str] = mapped_column(String(180))
+    subject: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    automatic: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class Document(Base, IdMixin):
     __tablename__ = "documents"
 

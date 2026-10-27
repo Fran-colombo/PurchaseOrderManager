@@ -5,10 +5,11 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_or_404, require_sysadmin
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import AppError
 from app.core.security import hash_password
-from app.models import AppSetting, AuditLog, Document, RefreshToken, Reminder, ReminderRule, User
+from app.models import AppSetting, AuditLog, Document, EmailLog, RefreshToken, Reminder, ReminderRule, User
 from app.models.enums import UserRole
 from app.schemas.inputs import ContactIn, ReminderRuleIn, SettingIn, UserIn, UserUpdate
 from app.services.audit import write_audit
@@ -16,6 +17,8 @@ from app.services.contact import build_contact
 from app.services.exports import export_table
 from app.services.files import document_path, save_document
 from app.services.insights import REPORTS, build_dashboard, build_report, global_search, search_audit, sync_reminders
+from app.services.mailer import MailError, send_email
+from app.services.notifier import email_notice, pending_client_notices, record_contact
 from app.services.presenters import document_out, reminder_out, user_out
 from app.services.workflow import active_admin_count, guard_last_admin
 
@@ -146,41 +149,37 @@ def list_reminders(status: str = "", db: Session = Depends(get_db), _: User = De
 
 @router.get("/reminders/client-notices")
 def client_notices(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    sync_reminders(db)
-    rows = (
-        db.query(Reminder)
-        .filter(Reminder.rule_code.like("cliente_%"), Reminder.status != "gestionado")
-        .order_by(Reminder.due_date.asc(), Reminder.created_at.desc())
-        .all()
-    )
     result = []
-    for row in rows:
-        data = _reminder_with_contact(db, row)
-        if data["contact"] is None:
-            row.status = "gestionado"
-            continue
+    for row, contact in pending_client_notices(db):
+        data = reminder_out(row)
+        data["contact"] = contact
         result.append(data)
     return result
 
 
 @router.post("/reminders/{reminder_id}/contacted")
 def reminder_contacted(reminder_id: int, data: ContactIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    from app.models.base import utcnow
-
     reminder = get_or_404(db, Reminder, reminder_id, "No se encontró el recordatorio.")
-    reminder.status = "gestionado"
-    reminder.seen_at = reminder.seen_at or utcnow()
-    reminder.managed_at = utcnow()
     channel = {"whatsapp": "WhatsApp", "email": "correo"}.get(data.channel, data.channel)
-    write_audit(
-        db,
-        user,
-        reminder.entity_type,
-        reminder.entity_id,
-        "aviso_cliente",
-        new={"canal": data.channel, "recordatorio": reminder.title},
-        reason=data.notes or f"Aviso de vencimiento enviado al cliente por {channel}",
-    )
+    record_contact(db, reminder, user, data.channel, data.notes or f"Aviso de vencimiento enviado al cliente por {channel}")
+    return _reminder_with_contact(db, reminder)
+
+
+@router.post("/reminders/{reminder_id}/send-email")
+def reminder_send_email(reminder_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not get_settings().email_enabled:
+        raise AppError("El envío de correos desde el sistema no está configurado.", 400, "email_disabled")
+    reminder = get_or_404(db, Reminder, reminder_id, "No se encontró el recordatorio.")
+    contact = build_contact(db, reminder)
+    if contact is None:
+        raise AppError("Este aviso ya no corresponde: está pagado o no tiene vencimiento.", 409, "notice_closed")
+    if not contact["email"]:
+        raise AppError("El cliente no tiene correo cargado. Completalo en su ficha.", 400, "missing_email")
+    try:
+        email_notice(db, reminder, contact, user)
+    except MailError as exc:
+        db.commit()
+        raise AppError(str(exc), 502, "email_failed") from exc
     return _reminder_with_contact(db, reminder)
 
 
@@ -353,6 +352,48 @@ def update_setting(key: str, data: SettingIn, db: Session = Depends(get_db), use
     return {"key": key, "value": data.value}
 
 
+@router.get("/settings/email")
+def email_status(db: Session = Depends(get_db), _: User = Depends(require_sysadmin)):
+    settings = get_settings()
+    logs = db.query(EmailLog).order_by(EmailLog.created_at.desc()).limit(20).all()
+    return {
+        "enabled": settings.email_enabled,
+        "auto_send": settings.notices_auto_send,
+        "host": settings.smtp_host,
+        "port": settings.smtp_port,
+        "from_address": settings.smtp_from,
+        "from_name": settings.smtp_from_name,
+        "bcc": settings.smtp_bcc,
+        "send_hour": settings.notices_send_hour,
+        "send_until_hour": settings.notices_send_until_hour,
+        "check_minutes": settings.notices_check_minutes,
+        "recent": [
+            {
+                "id": row.id,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "to_address": row.to_address,
+                "subject": row.subject,
+                "status": row.status,
+                "automatic": row.automatic,
+                "error": row.error,
+            }
+            for row in logs
+        ],
+    }
+
+
+@router.post("/settings/email/test")
+def email_test(db: Session = Depends(get_db), user: User = Depends(require_sysadmin)):
+    try:
+        send_email(user.email, "Prueba de correo · Conkreto", "Este es un correo de prueba. Si lo recibiste, el envío automático de avisos está bien configurado.")
+    except MailError as exc:
+        db.add(EmailLog(to_address=user.email, subject="Prueba de correo", status="error", error=str(exc)))
+        db.commit()
+        raise AppError(str(exc), 502, "email_failed") from exc
+    db.add(EmailLog(to_address=user.email, subject="Prueba de correo", status="enviado"))
+    return {"ok": True, "detail": f"Correo de prueba enviado a {user.email}."}
+
+
 @router.get("/audit")
 def audit(entity_type: str = "", page: int = 1, page_size: int = 50, db: Session = Depends(get_db), _: User = Depends(require_sysadmin)):
     page = max(page, 1)
@@ -382,7 +423,10 @@ def audit(entity_type: str = "", page: int = 1, page_size: int = 50, db: Session
 
 @router.get("/meta")
 def meta(_: User = Depends(get_current_user)):
+    settings = get_settings()
     return {
+        "email_enabled": settings.email_enabled,
+        "email_auto_send": settings.email_enabled and settings.notices_auto_send,
         "currencies": ["ARS", "USD"],
         "retention_bases": [
             {"value": "solo_base", "label": "Solo importe base certificado"},

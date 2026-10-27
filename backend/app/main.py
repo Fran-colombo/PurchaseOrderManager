@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -12,9 +14,35 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal, engine
 from app.core.errors import AppError
 from app.models import Base
+from app.services.notifier import run_auto_notices
 from app.services.seed import ensure_initial_admin, seed_reference_data
 
 settings = get_settings()
+logger = logging.getLogger("conkreto")
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+
+
+def _send_notices_once() -> None:
+    db = SessionLocal()
+    try:
+        summary = run_auto_notices(db)
+        if summary["sent"] or summary["failed"]:
+            logger.info("Avisos automáticos por correo: %s", summary)
+    except Exception:
+        db.rollback()
+        logger.exception("Falló el envío automático de avisos")
+    finally:
+        db.close()
+
+
+async def _notices_loop() -> None:
+    while True:
+        await asyncio.to_thread(_send_notices_once)
+        await asyncio.sleep(max(settings.notices_check_minutes, 5) * 60)
 
 
 @asynccontextmanager
@@ -27,7 +55,10 @@ async def lifespan(_: FastAPI):
         ensure_initial_admin(db)
     finally:
         db.close()
+    task = asyncio.create_task(_notices_loop()) if settings.email_enabled and settings.notices_auto_send else None
     yield
+    if task:
+        task.cancel()
 
 
 app = FastAPI(title="Conkreto", version="1.0.0", lifespan=lifespan)

@@ -342,6 +342,8 @@ export interface Option {
 }
 
 export interface Meta {
+  email_enabled?: boolean;
+  email_auto_send?: boolean;
   currencies: string[];
   retention_bases: Option[];
   retention_concepts: Option[];

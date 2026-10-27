@@ -847,9 +847,20 @@ El mensaje incluye el nombre del contacto, el número de certificado, la obra, l
 
 Al tocar WhatsApp o Correo, el aviso queda como **gestionado**, desaparece de la lista y se registra en la **auditoría** quién lo envió y por qué canal. Si el cliente paga antes, los avisos pendientes de ese certificado desaparecen solos.
 
+**Envío automático por correo**
+
+Si el administrador configuró un servidor de correo (ver sección 23.4):
+
+- Los avisos a clientes **con correo cargado** se mandan **solos**, en el horario configurado (por defecto, de 9 a 20 h). No hace falta tocar nada.
+- El botón dice **Enviar correo** y lo manda en el momento desde el sistema, sin abrir tu programa de correo.
+- En la tarjeta de Inicio quedan solo los avisos que no salieron: clientes sin correo (mandalos por WhatsApp) o envíos que fallaron.
+- Cada envío queda en la auditoría como *aviso_cliente*. Si lo mandó el sistema solo, figura con usuario **Sistema** y canal **email_automatico**.
+- Si un envío falla, el sistema lo reintenta en la próxima revisión, hasta 3 veces.
+
 **Importante**
 
-- El envío lo hacés vos desde tu WhatsApp o tu correo: el sistema arma el mensaje, pero no lo manda solo.
+- Si no hay servidor de correo configurado, el envío lo hacés vos desde tu WhatsApp o tu correo: el sistema arma el mensaje, pero no lo manda solo.
+- WhatsApp siempre se manda a mano desde tu teléfono o WhatsApp Web.
 - Si el botón de WhatsApp o de correo no aparece, al cliente le falta el teléfono o el correo. Completalo en su ficha (sección 8.2).
 
 ---
@@ -898,6 +909,17 @@ Menú **Administración → Configuración**.
 
   Cambiar estos valores **no modifica** órdenes ni certificados existentes.
 - **Reglas de recordatorios**: para cada regla, activala o desactivala con el interruptor, cambiá los **días de anticipación** o el **repetir cada (días)**, y tocá **✓** para guardar.
+
+### 23.4. Correo automático a clientes
+
+En **Administración → Configuración**, la tarjeta **Correo automático a clientes** muestra:
+
+- Si el envío automático está **activo** o **desactivado**.
+- El remitente, el servidor y el horario de envío.
+- El botón **Enviarme un correo de prueba**, que manda un correo a tu propia dirección. Usalo después de configurar el servidor para confirmar que funciona.
+- Los **últimos envíos**, con destinatario, si fue automático o manual, y el error si falló.
+
+La configuración del servidor de correo **no se cambia desde la pantalla**: va en el archivo `.env` del servidor (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, etc.), porque incluye una contraseña. Después de cambiarlo hay que reiniciar la aplicación.
 
 ### 23.3. Auditoría
 
