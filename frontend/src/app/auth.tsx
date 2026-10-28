@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, tokens } from "../services/api";
+import { api, expireSession, sessionExpired, tokens } from "../services/api";
 import type { Meta, User } from "../types";
 
 interface AuthState {
@@ -20,7 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    if (!tokens.access) {
+    if (!tokens.access || sessionExpired()) {
+      if (tokens.access) expireSession();
       setUser(null);
       setLoading(false);
       return;
@@ -46,6 +47,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("conkreto:logout", onLogout);
     return () => window.removeEventListener("conkreto:logout", onLogout);
   }, [reload]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Revisión periódica: los temporizadores largos se congelan en pestañas en segundo plano.
+    const check = () => {
+      if (sessionExpired()) expireSession();
+    };
+    const timer = window.setInterval(check, 10_000);
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, [user]);
 
   const login = useCallback(async (email: string, password: string) => {
     const { data } = await api.post("/auth/login", { email, password });

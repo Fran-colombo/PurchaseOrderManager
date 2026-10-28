@@ -209,6 +209,7 @@ def certificate_out(db, cert: Certificate, detailed: bool = False) -> dict:
         "received_date": _iso(cert.received_date),
         "approved_date": _iso(cert.approved_date),
         "invoiced_date": _iso(cert.invoiced_date),
+        "invoice_number": cert.invoice_number or "",
         "payment_due_date": _iso(cert.payment_due_date),
         "status": cert.status,
         "currency": cert.currency,

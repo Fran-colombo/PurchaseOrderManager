@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../app/auth";
-import { errorMessage } from "../services/api";
+import { clearLogoutReason, errorMessage, logoutReason } from "../services/api";
 
 export default function LoginPage() {
   const { login, user } = useAuth();
@@ -11,6 +11,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [expired] = useState(() => logoutReason() === "expired");
+
+  useEffect(() => {
+    clearLogoutReason();
+  }, []);
 
   if (user) return <Navigate to="/" replace />;
 
@@ -46,6 +51,12 @@ export default function LoginPage() {
           </div>
         </div>
         <h1 className="fs-5 fw-semibold mb-3">Iniciar sesión</h1>
+        {expired && !error && (
+          <div className="alert alert-warning py-2 small" role="status">
+            <i className="bi bi-clock-history me-1" />
+            Tu sesión venció. Ingresá de nuevo para continuar.
+          </div>
+        )}
         {error && (
           <div className="alert alert-danger py-2 small" role="alert">
             {error}

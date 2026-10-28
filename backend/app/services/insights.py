@@ -757,8 +757,9 @@ def global_search(db: Session, term: str, limit: int = 8) -> list[dict]:
         results.append({"type": "obra", "id": project.id, "title": project.name, "subtitle": project.internal_code, "path": f"/obras/{project.id}"})
     for po in db.query(PurchaseOrder).filter(PurchaseOrder.client_po_number.ilike(text)).limit(limit):
         results.append({"type": "orden", "id": po.id, "title": po.client_po_number, "subtitle": po.project.name if po.project else "", "path": f"/ordenes/{po.id}"})
-    for cert in db.query(Certificate).filter(Certificate.client_number.ilike(text)).limit(limit):
-        results.append({"type": "certificado", "id": cert.id, "title": cert.client_number, "subtitle": cert.status, "path": f"/certificados/{cert.id}"})
+    for cert in db.query(Certificate).filter(or_(Certificate.client_number.ilike(text), Certificate.invoice_number.ilike(text))).limit(limit):
+        subtitle = f"Factura {cert.invoice_number} · {cert.status}" if cert.invoice_number else cert.status
+        results.append({"type": "certificado", "id": cert.id, "title": cert.client_number, "subtitle": subtitle, "path": f"/certificados/{cert.id}"})
     for retention in db.query(Retention).join(Certificate).filter(Certificate.client_number.ilike(text)).limit(limit):
         results.append(
             {

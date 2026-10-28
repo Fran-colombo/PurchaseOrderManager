@@ -17,6 +17,10 @@ from app.services.presenters import user_out
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
 def _too_many_attempts(db: Session, identifier: str) -> bool:
     settings = get_settings()
     window = datetime.now(timezone.utc) - timedelta(minutes=settings.login_window_minutes)
@@ -62,7 +66,8 @@ def login(data: LoginIn, request: Request, db: Session = Depends(get_db)):
 def refresh(data: RefreshIn, db: Session = Depends(get_db)):
     token = db.query(RefreshToken).filter(RefreshToken.token_hash == hash_refresh_token(data.refresh_token)).one_or_none()
     now = datetime.now(timezone.utc)
-    if token is None or token.revoked or token.expires_at < now:
+    session_limit = timedelta(minutes=get_settings().access_token_expire_minutes)
+    if token is None or token.revoked or _aware(token.expires_at) < now or _aware(token.created_at) + session_limit < now:
         raise AppError("La sesión venció. Volvé a iniciar sesión.", 401, "unauthorized")
     user = db.get(User, token.user_id)
     if user is None or not user.is_active:

@@ -233,6 +233,8 @@ def _assign_certificate_header(cert: Certificate, data: dict) -> None:
     ):
         if field in data and data[field] is not None:
             setattr(cert, field, data[field])
+    if data.get("invoice_number") is not None:
+        cert.invoice_number = data["invoice_number"].strip()
     if "other_additions" in data and data["other_additions"] is not None:
         cert.other_additions = money(data["other_additions"])
     if "other_deductions" in data and data["other_deductions"] is not None:

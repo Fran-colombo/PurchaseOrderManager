@@ -24,6 +24,34 @@ def test_login_success_and_failure(client):
     assert body["user"]["role"] == "sysadmin"
 
 
+def test_session_ends_when_token_expires(client):
+    from datetime import datetime, timezone
+
+    import jwt
+
+    from app.core.config import get_settings
+    from app.core.database import SessionLocal
+    from app.models import RefreshToken
+
+    body = login(client).json()
+    settings = get_settings()
+    expired = jwt.encode(
+        {"sub": str(body["user"]["id"]), "tv": 1, "exp": datetime.now(timezone.utc) - timedelta(seconds=1), "type": "access"},
+        settings.secret_key,
+        algorithm="HS256",
+    )
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {expired}"}).status_code == 401
+
+    assert client.post("/api/auth/refresh", json={"refresh_token": body["refresh_token"]}).status_code == 200
+    db = SessionLocal()
+    try:
+        db.query(RefreshToken).update({"created_at": datetime.now(timezone.utc) - timedelta(minutes=settings.access_token_expire_minutes + 1)})
+        db.commit()
+    finally:
+        db.close()
+    assert client.post("/api/auth/refresh", json={"refresh_token": body["refresh_token"]}).status_code == 401
+
+
 def test_no_public_registration(client):
     response = client.post("/api/auth/register", json={"username": "nuevo", "password": "12345678"})
     assert response.status_code == 404
@@ -347,7 +375,22 @@ def test_client_payment_notices_week_day_and_same_day(client):
     assert contact["whatsapp_url"].startswith("https://wa.me/5491123456789?text=")
     assert contact["mailto_url"].startswith("mailto:pagos@pecam.test?subject=")
     assert "Hola Laura" in contact["message"]
-    assert "vence mañana" in contact["message"]
+    assert "el pago del certificado N.º C-1 (obra Obra de prueba, OC OC-TEST-001) vence mañana" in contact["message"]
+    assert "$" not in contact["message"]
+
+    cert_id = int(notice["link_path"].rsplit("/", 1)[-1])
+    invoiced = client.put(
+        f"/api/certificates/{cert_id}",
+        headers=headers,
+        json={"invoice_number": " 0003-00001234 ", "invoiced_date": "2026-10-15"},
+    )
+    assert invoiced.status_code == 200, invoiced.text
+    assert invoiced.json()["invoice_number"] == "0003-00001234"
+    contact = next(row for row in client.get("/api/reminders/client-notices", headers=headers).json() if row["id"] == notice["id"])["contact"]
+    assert contact["subject"] == "Recordatorio de pago · Factura N.º 0003-00001234"
+    assert "el pago de la factura N.º 0003-00001234 del 15/10/2026 (certificado N.º C-1, obra Obra de prueba, OC OC-TEST-001) vence mañana" in contact["message"]
+    found = client.get("/api/search", headers=headers, params={"q": "00001234"}).json()
+    assert any(row["type"] == "certificado" and row["id"] == cert_id for row in found)
 
     again = client.get("/api/reminders/client-notices", headers=headers).json()
     assert len(again) == 3
@@ -359,6 +402,23 @@ def test_client_payment_notices_week_day_and_same_day(client):
     assert len(remaining) == 2
     audit = client.get("/api/audit", headers=headers, params={"entity_type": "certificate"}).json()
     assert any(row["action"] == "aviso_cliente" for row in audit["items"])
+
+
+def test_existing_database_gets_new_columns(tmp_path):
+    from sqlalchemy import create_engine, inspect, text
+
+    from app.core.schema_upgrade import add_missing_columns
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'vieja.db'}")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE certificates (id INTEGER PRIMARY KEY, client_number VARCHAR(80))"))
+        connection.execute(text("INSERT INTO certificates (client_number) VALUES ('001')"))
+    add_missing_columns(engine)
+    add_missing_columns(engine)
+    assert "invoice_number" in {col["name"] for col in inspect(engine).get_columns("certificates")}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT invoice_number FROM certificates")).scalar() == ""
+    engine.dispose()
 
 
 def test_client_notices_are_emailed_automatically(client, monkeypatch):

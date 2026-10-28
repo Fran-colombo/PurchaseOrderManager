@@ -2,6 +2,7 @@ import axios, { AxiosError } from "axios";
 
 const ACCESS_KEY = "conkreto.access";
 const REFRESH_KEY = "conkreto.refresh";
+const LOGOUT_REASON_KEY = "conkreto.logoutReason";
 
 export const api = axios.create({ baseURL: "/api" });
 
@@ -22,43 +23,48 @@ export const tokens = {
   },
 };
 
+/** Momento (ms) en que vence el token, leído del propio JWT. */
+export function tokenExpiry(token: string | null): number | null {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+export function sessionExpired(): boolean {
+  const expiry = tokenExpiry(tokens.access);
+  return expiry !== null && Date.now() >= expiry;
+}
+
+export function expireSession() {
+  tokens.clear();
+  sessionStorage.setItem(LOGOUT_REASON_KEY, "expired");
+  window.dispatchEvent(new Event("conkreto:logout"));
+}
+
+export function logoutReason(): string | null {
+  return sessionStorage.getItem(LOGOUT_REASON_KEY);
+}
+
+export function clearLogoutReason() {
+  sessionStorage.removeItem(LOGOUT_REASON_KEY);
+}
+
 api.interceptors.request.use((config) => {
   const access = tokens.access;
   if (access) config.headers.Authorization = `Bearer ${access}`;
   return config;
 });
 
-let refreshing: Promise<string | null> | null = null;
-
-async function refreshAccess(): Promise<string | null> {
-  const refresh = tokens.refresh;
-  if (!refresh) return null;
-  try {
-    const { data } = await axios.post("/api/auth/refresh", { refresh_token: refresh });
-    tokens.set(data.access_token, data.refresh_token);
-    return data.access_token;
-  } catch {
-    tokens.clear();
-    return null;
-  }
-}
-
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const original = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
-    const isAuthCall = original?.url?.startsWith("/auth/login") || original?.url?.startsWith("/auth/refresh");
-    if (error.response?.status === 401 && original && !original._retry && !isAuthCall) {
-      original._retry = true;
-      refreshing = refreshing ?? refreshAccess().finally(() => (refreshing = null));
-      const access = await refreshing;
-      if (access) {
-        original.headers = original.headers ?? {};
-        (original.headers as Record<string, string>).Authorization = `Bearer ${access}`;
-        return api(original);
-      }
-      window.dispatchEvent(new Event("conkreto:logout"));
-    }
+    const url = error.config?.url ?? "";
+    const isAuthCall = url.startsWith("/auth/login") || url.startsWith("/auth/refresh");
+    if (error.response?.status === 401 && !isAuthCall && tokens.access) expireSession();
     return Promise.reject(error);
   },
 );

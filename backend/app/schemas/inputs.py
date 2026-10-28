@@ -211,6 +211,7 @@ class CertificateIn(BaseModel):
     received_date: date | None = None
     approved_date: date | None = None
     invoiced_date: date | None = None
+    invoice_number: str = Field(default="", max_length=80)
     payment_due_date: date | None = None
     status: str = "borrador"
     other_additions: Decimal = Decimal("0")
@@ -230,6 +231,7 @@ class CertificateUpdate(BaseModel):
     received_date: date | None = None
     approved_date: date | None = None
     invoiced_date: date | None = None
+    invoice_number: str | None = Field(default=None, max_length=80)
     payment_due_date: date | None = None
     status: str | None = None
     other_additions: Decimal | None = None

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_or_404, require_sysadmin
@@ -72,7 +73,7 @@ def list_certificates(
     if client_id:
         query = query.join(PurchaseOrder, PurchaseOrder.id == Certificate.purchase_order_id).filter(PurchaseOrder.client_id == client_id)
     if q:
-        query = query.filter(Certificate.client_number.ilike(f"%{q}%"))
+        query = query.filter(or_(Certificate.client_number.ilike(f"%{q}%"), Certificate.invoice_number.ilike(f"%{q}%")))
     if project_id:
         query = query.filter(Certificate.project_id == project_id)
     if purchase_order_id:

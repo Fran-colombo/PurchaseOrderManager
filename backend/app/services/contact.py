@@ -44,6 +44,21 @@ def _deadline(verb_future: str, verb_past: str, due: date, today: date) -> str:
     return f"{verb_future} en {days} días, el {when}"
 
 
+def _certificate_reference(cert: Certificate | None, fallback_number: str) -> tuple[str, str]:
+    """Devuelve (referencia para el asunto, descripción para el mensaje), priorizando la factura."""
+    po = cert.purchase_order if cert else None
+    number = cert.client_number if cert else fallback_number
+    work = f"obra {po.project.name}, OC {po.client_po_number}" if po and po.project else ""
+    invoice = (cert.invoice_number or "").strip() if cert else ""
+    invoiced = cert.invoiced_date.strftime("%d/%m/%Y") if cert and cert.invoiced_date else ""
+    if invoice:
+        dated = f" del {invoiced}" if invoiced else ""
+        details = ", ".join(part for part in (f"certificado N.º {number}", work) if part)
+        return f"Factura N.º {invoice}", f"la factura N.º {invoice}{dated} ({details})"
+    dated = f" facturado el {invoiced}" if invoiced else ""
+    return f"Certificado N.º {number}", f"el certificado N.º {number}{dated}" + (f" ({work})" if work else "")
+
+
 def build_contact(db: Session, reminder: Reminder, today: date | None = None) -> dict | None:
     if not is_client_reminder(reminder) or reminder.due_date is None:
         return None
@@ -58,29 +73,22 @@ def build_contact(db: Session, reminder: Reminder, today: date | None = None) ->
         po = cert.purchase_order
         client = po.client if po else None
         pending = abs(money(cert.net_amount)) - collected_amount(db, cert.id)
-        subject = f"Recordatorio de pago · Certificado N.º {cert.client_number}"
-        context = f"el certificado N.º {cert.client_number} (obra {po.project.name if po else ''}, OC {po.client_po_number if po else ''})"
-        body = (
-            f"el pago de {context} {_deadline('vence', 'venció', reminder.due_date, today)}. "
-            f"El saldo pendiente es de {format_amount(pending, cert.currency)}. "
-            "¿Nos confirmás la fecha de pago?"
-        )
+        reference, context = _certificate_reference(cert, cert.client_number)
+        subject = f"Recordatorio de pago · {reference}"
+        of_context = "del" + context[2:] if context.startswith("el ") else f"de {context}"
+        body = f"el pago {of_context} {_deadline('vence', 'venció', reminder.due_date, today)}. ¿Nos confirmás la fecha de pago?"
     elif reminder.entity_type == "retention":
         retention = db.get(Retention, reminder.entity_id)
         if retention is None:
             return None
         cert = retention.certificate
-        po = cert.purchase_order if cert else None
         client = db.get(Client, retention.client_id)
         pending = money(retention.pending_amount)
-        currency = cert.currency if cert else reminder.currency
-        number = cert.client_number if cert else str(retention.id)
-        subject = f"Recordatorio de devolución de caución · Certificado N.º {number}"
-        context = f"el certificado N.º {number} (obra {po.project.name if po else ''}, OC {po.client_po_number if po else ''})"
+        reference, context = _certificate_reference(cert, str(retention.id))
+        subject = f"Recordatorio de devolución de caución · {reference}"
         body = (
             f"la caución (fondo de reparo) retenida en {context} "
             f"{_deadline('se libera', 'se liberó', reminder.due_date, today)}. "
-            f"El importe a devolver es de {format_amount(pending, currency)}. "
             "¿Nos confirmás cuándo la van a transferir?"
         )
     else:

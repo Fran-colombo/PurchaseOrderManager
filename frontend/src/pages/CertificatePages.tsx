@@ -16,7 +16,7 @@ export function CertificatesPage() {
   const [filters, setFilters] = useStoredState("filters.certificates", { q: "", status: params.get("status") ?? "", page: 1 });
   const { data, loading, error, reload } = useApi<Page<Certificate>>("/certificates", filters);
   const columns: Column<Certificate>[] = [
-    { key: "n", header: "Certificado", render: (row) => row.client_number, primary: true },
+    { key: "n", header: "Certificado", render: (row) => <>{row.client_number}{row.invoice_number && <div className="small text-secondary">Fact. {row.invoice_number}</div>}</>, primary: true },
     { key: "oc", header: "Orden", render: (row) => row.purchase_order_number },
     { key: "c", header: "Cliente / obra", render: (row) => <>{row.client_name}<div className="small text-secondary">{row.project_name}</div></>, hideOnMobile: true },
     { key: "d", header: "Emisión", render: (row) => date(row.issue_date) },
@@ -30,7 +30,7 @@ export function CertificatesPage() {
       <PageHeader title="Certificados de avance" subtitle="Importe certificado, facturado, cobrado y pendiente se muestran por separado." actions={<Link to="/certificados/nuevo" className="btn btn-primary"><i className="bi bi-plus-lg me-1" />Nuevo certificado</Link>} />
       <Card bodyClass="p-0">
         <div className="filters">
-          <input className="form-control" placeholder="Buscar número de certificado" value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value, page: 1 })} aria-label="Buscar" />
+          <input className="form-control" placeholder="Buscar n.º de certificado o de factura" value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value, page: 1 })} aria-label="Buscar" />
           <select className="form-select" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value, page: 1 })} aria-label="Estado">
             <option value="">Todos los estados</option>
             {(meta?.certificate_statuses ?? []).map((status) => <option key={status} value={status}>{label(status)}</option>)}
@@ -65,7 +65,7 @@ export function NewCertificatePage() {
   const orders = useApi<Page<PurchaseOrder>>("/purchase-orders", { page_size: 200, status: "vigente" });
   const order = useApi<PurchaseOrder>(orderId ? `/purchase-orders/${orderId}` : null);
   const indexes = useApi<Page<CacIndex>>("/cac-indexes", { page_size: 200 });
-  const [header, setHeader] = useState({ client_number: "", document_type: "avance", status: "presentado", issue_date: todayIso(), period_from: "", period_to: "", received_date: "", approved_date: "", invoiced_date: "", payment_due_date: "", other_additions: "0", other_deductions: "0", notes: "" });
+  const [header, setHeader] = useState({ client_number: "", document_type: "avance", status: "presentado", issue_date: todayIso(), period_from: "", period_to: "", received_date: "", approved_date: "", invoiced_date: "", invoice_number: "", payment_due_date: "", other_additions: "0", other_deductions: "0", notes: "" });
   const [lines, setLines] = useState<LineState[]>([]);
   const [error, setError] = useState("");
   const [overage, setOverage] = useState<number | null>(null);
@@ -183,7 +183,8 @@ export function NewCertificatePage() {
           <Field name="period_to" label="Período hasta" type="date" value={header.period_to} onChange={setH("period_to")} className="col-6 col-md-3" />
           <Field name="received_date" label="Recepción" type="date" value={header.received_date} onChange={setH("received_date")} className="col-6 col-md-3" />
           <Field name="approved_date" label="Aprobación" type="date" value={header.approved_date} onChange={setH("approved_date")} className="col-6 col-md-3" />
-          <Field name="invoiced_date" label="Facturación" type="date" value={header.invoiced_date} onChange={setH("invoiced_date")} className="col-6 col-md-3" />
+          <Field name="invoice_number" label="N.º de factura" value={header.invoice_number} onChange={setH("invoice_number")} placeholder="0003-00001234" className="col-6 col-md-3" />
+          <Field name="invoiced_date" label="Fecha de factura" type="date" value={header.invoiced_date} onChange={setH("invoiced_date")} className="col-6 col-md-3" />
           <Field name="payment_due_date" label="Vencimiento del pago" type="date" value={header.payment_due_date} onChange={setH("payment_due_date")} className="col-6 col-md-3" />
         </div>
       </Card>
@@ -292,6 +293,7 @@ function EditCertificateModal({ cert, onClose, onSaved }: { cert: Certificate; o
     received_date: cert.received_date ?? "",
     approved_date: cert.approved_date ?? "",
     invoiced_date: cert.invoiced_date ?? "",
+    invoice_number: cert.invoice_number ?? "",
     payment_due_date: cert.payment_due_date ?? "",
     notes: cert.notes,
   });
@@ -322,7 +324,8 @@ function EditCertificateModal({ cert, onClose, onSaved }: { cert: Certificate; o
         <Field name="issue_date" label="Emisión" type="date" value={form.issue_date} onChange={set("issue_date")} />
         <Field name="received_date" label="Recepción" type="date" value={form.received_date} onChange={set("received_date")} />
         <Field name="approved_date" label="Aprobación" type="date" value={form.approved_date} onChange={set("approved_date")} />
-        <Field name="invoiced_date" label="Facturación" type="date" value={form.invoiced_date} onChange={set("invoiced_date")} />
+        <Field name="invoice_number" label="N.º de factura" value={form.invoice_number} onChange={set("invoice_number")} placeholder="0003-00001234" hint="Se incluye en los avisos de cobro al cliente." />
+        <Field name="invoiced_date" label="Fecha de factura" type="date" value={form.invoiced_date} onChange={set("invoiced_date")} />
         <Field name="payment_due_date" label="Vencimiento del pago" type="date" value={form.payment_due_date} onChange={set("payment_due_date")} />
         <Field name="notes" label="Observaciones" type="textarea" className="col-12" value={form.notes} onChange={set("notes")} />
       </div>
@@ -392,7 +395,8 @@ export function CertificateDetailPage() {
                 { label: "Emisión", value: date(cert.issue_date) },
                 { label: "Período", value: cert.period_from ? `${date(cert.period_from)} – ${date(cert.period_to)}` : "—" },
                 { label: "Aprobación", value: date(cert.approved_date) },
-                { label: "Facturación", value: date(cert.invoiced_date) },
+                { label: "Factura", value: cert.invoice_number || "—" },
+                { label: "Fecha de factura", value: date(cert.invoiced_date) },
                 { label: "Vencimiento del pago", value: date(cert.payment_due_date) },
                 { label: "Tipo", value: label(cert.document_type) },
               ]}

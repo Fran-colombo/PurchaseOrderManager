@@ -214,6 +214,7 @@ class Certificate(Base, IdMixin, TimestampMixin):
     received_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     approved_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     invoiced_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    invoice_number: Mapped[str] = mapped_column(String(80), default="", server_default="")
     payment_due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="borrador", index=True)
     currency: Mapped[str] = mapped_column(String(8), default="ARS")

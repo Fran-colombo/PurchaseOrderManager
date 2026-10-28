@@ -188,6 +188,7 @@ export interface Certificate {
   received_date: string | null;
   approved_date: string | null;
   invoiced_date: string | null;
+  invoice_number: string;
   payment_due_date: string | null;
   status: string;
   currency: string;

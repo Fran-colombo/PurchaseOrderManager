@@ -13,6 +13,7 @@ from app.api.routes import auth, catalog, finance, system
 from app.core.config import get_settings
 from app.core.database import SessionLocal, engine
 from app.core.errors import AppError
+from app.core.schema_upgrade import add_missing_columns
 from app.models import Base
 from app.services.notifier import run_auto_notices
 from app.services.seed import ensure_initial_admin, seed_reference_data
@@ -49,6 +50,7 @@ async def _notices_loop() -> None:
 async def lifespan(_: FastAPI):
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)
+    add_missing_columns(engine)
     db = SessionLocal()
     try:
         seed_reference_data(db)

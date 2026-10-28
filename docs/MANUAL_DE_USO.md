@@ -843,7 +843,11 @@ Se crean **una semana antes**, **un día antes** y **el mismo día** del vencimi
 2. O tocá **Correo**: se abre tu programa de correo con el destinatario, el asunto y el mensaje ya cargados.
 3. Con **Ver mensaje** podés leer el texto antes, **copiarlo** y pegarlo donde quieras (por ejemplo, si lo mandás desde otro teléfono).
 
-El mensaje incluye el nombre del contacto, el número de certificado, la obra, la orden de compra, la fecha de vencimiento y el **saldo pendiente actualizado**.
+El mensaje incluye el nombre del contacto, el **número y la fecha de factura** (si están cargados en el certificado), el número de certificado, la obra, la orden de compra y la fecha de vencimiento. No incluye importes. Ejemplo:
+
+> Hola Juan Pablo, ¿cómo estás? Te escribimos de Conkreto para recordarte que el pago de la factura N.º 0003-00001234 del 15/10/2026 (certificado N.º 002, obra UP N°13 Piñero, OC 0007-00009734) vence en 2 días, el 30/10/2026. ¿Nos confirmás la fecha de pago? ¡Muchas gracias!
+
+Si el certificado no tiene número de factura, el mensaje habla del certificado. Cargá el **N.º de factura** y la **Fecha de factura** en el certificado (botón *Estado y fechas*), porque los clientes suelen rastrear los pagos por esos dos datos.
 
 Al tocar WhatsApp o Correo, el aviso queda como **gestionado**, desaparece de la lista y se registra en la **auditoría** quién lo envió y por qué canal. Si el cliente paga antes, los avisos pendientes de ese certificado desaparecen solos.
 
