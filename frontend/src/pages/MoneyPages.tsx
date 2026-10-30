@@ -76,6 +76,14 @@ function linePayload(line: AppLine) {
   };
 }
 
+const PAYMENT_METHODS = ["Transferencia", "E-cheq", "Cheque", "Efectivo", "Otro"];
+
+const REFERENCE_LABEL: Record<string, string> = {
+  Transferencia: "N.º de transferencia",
+  "E-cheq": "N.º de e-cheq",
+  Cheque: "N.º de cheque",
+};
+
 function NewPaymentModal({ certificateId, retentionId, onClose, onSaved }: { certificateId?: string; retentionId?: string; onClose: () => void; onSaved: (payment: Payment) => void }) {
   const { meta } = useAuth();
   const [form, setForm] = useState({ client_id: "", payment_date: todayIso(), total_amount: "", currency: "ARS", method: "Transferencia", reference: "", notes: "" });
@@ -134,8 +142,8 @@ function NewPaymentModal({ certificateId, retentionId, onClose, onSaved }: { cer
         <Field name="payment_date" label="Fecha" type="date" required value={form.payment_date} onChange={set("payment_date")} className="col-6 col-md-3" />
         <SelectField name="currency" label="Moneda" value={form.currency} onChange={set("currency")} options={(meta?.currencies ?? ["ARS"]).map((code) => ({ value: code, label: code }))} className="col-6 col-md-3" />
         <Field name="total_amount" label="Importe total recibido" required type="number" step="0.01" value={form.total_amount} onChange={set("total_amount")} className="col-12 col-md-4" />
-        <Field name="method" label="Medio de pago" value={form.method} onChange={set("method")} className="col-6 col-md-4" />
-        <Field name="reference" label="N.º de transferencia o referencia" value={form.reference} onChange={set("reference")} className="col-6 col-md-4" />
+        <SelectField name="method" label="Medio de pago" value={form.method} onChange={set("method")} options={(meta?.payment_methods ?? PAYMENT_METHODS).map((value) => ({ value, label: value === "E-cheq" ? "E-cheq (cheque electrónico)" : value }))} className="col-6 col-md-4" />
+        <Field name="reference" label={REFERENCE_LABEL[form.method] ?? "Referencia"} value={form.reference} onChange={set("reference")} className="col-6 col-md-4" hint={form.method === "E-cheq" ? "Si es de pago diferido, anotá la fecha de cobro en observaciones." : undefined} />
         <Field name="notes" label="Observaciones" type="textarea" className="col-12" value={form.notes} onChange={set("notes")} />
       </div>
       <h3 className="fs-6 fw-semibold mt-4">Cómo se distribuye el pago</h3>

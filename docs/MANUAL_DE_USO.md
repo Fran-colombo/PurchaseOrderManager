@@ -571,7 +571,8 @@ Registra **el dinero que efectivamente entró** y **a qué se aplica**. Es lo ú
    - **Fecha**.
    - **Moneda** (tiene que coincidir con la de los certificados o cauciones a los que lo apliques).
    - **Importe total recibido** (obligatorio).
-   - **Medio de pago** (transferencia, cheque, etc.), **número de transferencia o referencia** y **observaciones**.
+   - **Medio de pago**: *Transferencia*, *E-cheq* (cheque electrónico), *Cheque*, *Efectivo* u *Otro*.
+   - **Número de transferencia, de e-cheq o de cheque** (el nombre del campo cambia según el medio elegido) y **observaciones**. Si el e-cheq es de pago diferido, anotá la fecha de cobro en observaciones.
 3. **Cómo se distribuye el pago**: tocá **Agregar aplicación** por cada destino:
    - **Concepto**:
      - *Neto del certificado*: elegí el certificado (solo aparecen los del cliente, en esa moneda y con saldo pendiente).

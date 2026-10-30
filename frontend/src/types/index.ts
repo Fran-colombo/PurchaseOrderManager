@@ -354,5 +354,6 @@ export interface Meta {
   adjustment_statuses: string[];
   claim_statuses: string[];
   channels: string[];
+  payment_methods?: string[];
   payment_concepts: Option[];
 }

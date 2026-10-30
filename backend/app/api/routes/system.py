@@ -452,6 +452,7 @@ def meta(_: User = Depends(get_current_user)):
         "adjustment_statuses": ["calculado", "presentado", "aprobado", "facturado", "pagado", "rechazado", "anulado", "reemplazado"],
         "claim_statuses": ["pendiente_de_reclamar", "reclamo_enviado", "en_seguimiento", "fecha_de_pago_prometida", "parcialmente_recuperado", "recuperado", "en_disputa", "anulado"],
         "channels": ["correo", "whatsapp", "telefono", "nota_formal", "otro"],
+        "payment_methods": ["Transferencia", "E-cheq", "Cheque", "Efectivo", "Otro"],
         "payment_concepts": [
             {"value": "neto_certificado", "label": "Neto del certificado"},
             {"value": "devolucion_caucion", "label": "Devolución de caución"},
